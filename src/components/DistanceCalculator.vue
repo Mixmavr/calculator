@@ -47,7 +47,7 @@
     <button @click="calculateDepartureTimes">Calculate Departure Times</button>
 
     <!-- Display Results per Village -->
-    <div v-for="(villageResult, villageIndex) in villageResults" :key="villageIndex">
+    <div v-for="(villageResult, villageIndex) in sortedVillageResults" :key="villageIndex">
       <h3>Results for Village X: {{ villageResult.source.x }}, Y: {{ villageResult.source.y }}</h3>
       <ul>
         <li v-for="(result, index) in villageResult.results" :key="index">
@@ -86,6 +86,19 @@ export default {
       villageResults: [], // Store results for each source village
     };
   },
+  computed: {
+    sortedVillageResults() {
+      const resultsCopy = [...this.villageResults];
+      resultsCopy.forEach((villageResult) => {
+        villageResult.results.sort((a, b) => {
+          const timeA = this.timeInSeconds(a.time);
+          const timeB = this.timeInSeconds(b.time);
+          return timeA - timeB;
+        });
+      });
+      return resultsCopy;
+    },
+  },
   methods: {
     calculateDistance(x1, y1, x2, y2) {
       let dx = x1 - x2;
@@ -105,53 +118,52 @@ export default {
       this.targets.push({ x: 0, y: 0 });
     },
 
-    // ...
-calculateDepartureTimes() {
-  // Get the selected speed in seconds per unit distance
-  const speed = this.speeds[this.selectedSpeed] * 60;
+    calculateDepartureTimes() {
+      // Get the selected speed in seconds per unit distance
+      const speed = this.speeds[this.selectedSpeed] * 60;
 
-  // Create a new result object for the current village
-  const villageResult = {
-    source: { x: this.x1, y: this.y1 },
-    results: [],
-  };
+      // Create a new result object for the current village
+      const villageResult = {
+        source: { x: this.x1, y: this.y1 },
+        results: [],
+      };
 
-  // Calculate departure time for each target
-  for (const target of this.targets) {
-    // Calculate the distance based on the polygon schema
-    const distance = this.calculateDistance(this.x1, this.y1, target.x, target.y);
+      // Calculate departure time for each target
+      for (const target of this.targets) {
+        // Calculate the distance based on the polygon schema
+        const distance = this.calculateDistance(this.x1, this.y1, target.x, target.y);
 
-    // Calculate travel time in seconds
-    const travelTimeInSeconds = distance * speed;
+        // Calculate travel time in seconds
+        const travelTimeInSeconds = distance * speed;
 
-    // Convert the arrival time to seconds
-    const arrivalTimeInSeconds =
-      this.arrivalHours * 3600 +
-      this.arrivalMinutes * 60 +
-      this.arrivalSeconds;
+        // Convert the arrival time to seconds
+        const arrivalTimeInSeconds =
+          this.arrivalHours * 3600 +
+          this.arrivalMinutes * 60 +
+          this.arrivalSeconds;
 
-    // Calculate departure time in seconds
-    const departureTimeInSeconds = arrivalTimeInSeconds - travelTimeInSeconds;
+        // Calculate departure time in seconds
+        const departureTimeInSeconds = arrivalTimeInSeconds - travelTimeInSeconds;
 
-    // Round the departure time to the nearest second
-    const roundedDepartureTimeInSeconds = Math.round(departureTimeInSeconds);
+        // Convert departure time to hours, minutes, and seconds
+        const departureHours = Math.floor(departureTimeInSeconds / 3600);
+        const departureMinutes = Math.floor((departureTimeInSeconds % 3600) / 60);
+        const departureSeconds = Math.floor(departureTimeInSeconds % 60);
 
-    // Convert rounded departure time to hours, minutes, and seconds
-    const departureHours = Math.floor(roundedDepartureTimeInSeconds / 3600);
-    const departureMinutes = Math.floor((roundedDepartureTimeInSeconds % 3600) / 60);
-    const departureSeconds = roundedDepartureTimeInSeconds % 60;
+        // Format and add the result to the list
+        const formattedDepartureTime = `${departureHours}:${departureMinutes}:${departureSeconds}`;
+        villageResult.results.push({
+          target,
+          time: formattedDepartureTime,
+        });
+      }
 
-    // Format and add the result to the list
-    const formattedDepartureTime = `${departureHours}:${departureMinutes}:${departureSeconds}`;
-    villageResult.results.push({
-      target,
-      time: formattedDepartureTime,
-    });
-  }
-
-  // Push the result for the current village to the array
-  this.villageResults.push(villageResult);
-
+      // Push the result for the current village to the array
+      this.villageResults.push(villageResult);
+    },
+    timeInSeconds(formattedTime) {
+      const [hours, minutes, seconds] = formattedTime.split(':');
+      return parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(seconds);
     },
   },
 };
