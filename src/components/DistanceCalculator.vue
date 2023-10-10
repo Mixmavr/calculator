@@ -46,12 +46,14 @@
     </div>
     <button @click="calculateDepartureTimes">Calculate Departure Times</button>
 
-    <!-- Display Results per Village -->
-    <div v-for="(villageResult, villageIndex) in sortedVillageResults" :key="villageIndex">
-      <h3>Results for Village X: {{ villageResult.source.x }}, Y: {{ villageResult.source.y }}</h3>
+    <!-- Display Results for All Attacks Sorted by Departure Time Ascending -->
+    <div>
+      <h3>All Attack Results Sorted by Departure Time Ascending</h3>
       <ul>
-        <li v-for="(result, index) in villageResult.results" :key="index">
-          Target X: {{ result.target.x }}, Y: {{ result.target.y }} - Departure Time: {{ result.time }}
+        <li v-for="(result, index) in sortedAttackResults" :key="index">
+          Source X: {{ result.source.x }}, Source Y: {{ result.source.y }} - 
+          Target X: {{ result.target.x }}, Target Y: {{ result.target.y }} - 
+          Departure Time: {{ result.time }}
         </li>
       </ul>
     </div>
@@ -83,18 +85,16 @@ export default {
       arrivalHours: 0,
       arrivalMinutes: 0,
       arrivalSeconds: 0,
-      villageResults: [], // Store results for each source village
+      attackResults: [], // Store results for all attacks
     };
   },
   computed: {
-    sortedVillageResults() {
-      const resultsCopy = [...this.villageResults];
-      resultsCopy.forEach((villageResult) => {
-        villageResult.results.sort((a, b) => {
-          const timeA = this.timeInSeconds(a.time);
-          const timeB = this.timeInSeconds(b.time);
-          return timeA - timeB;
-        });
+    sortedAttackResults() {
+      const resultsCopy = [...this.attackResults];
+      resultsCopy.sort((a, b) => {
+        const timeA = this.timeInSeconds(a.time);
+        const timeB = this.timeInSeconds(b.time);
+        return timeA - timeB;
       });
       return resultsCopy;
     },
@@ -122,25 +122,22 @@ export default {
       // Get the selected speed in seconds per unit distance
       const speed = this.speeds[this.selectedSpeed] * 60;
 
-      // Create a new result object for the current village
-      const villageResult = {
-        source: { x: this.x1, y: this.y1 },
-        results: [],
-      };
+      // Convert the arrival time to seconds
+      const arrivalTimeInSeconds =
+        this.arrivalHours * 3600 +
+        this.arrivalMinutes * 60 +
+        this.arrivalSeconds;
+
+      // Create copies of targets to preserve the original coordinates
+      const targetsCopy = this.targets.map((target) => ({ ...target }));
 
       // Calculate departure time for each target
-      for (const target of this.targets) {
+      for (const target of targetsCopy) {
         // Calculate the distance based on the polygon schema
         const distance = this.calculateDistance(this.x1, this.y1, target.x, target.y);
 
         // Calculate travel time in seconds
         const travelTimeInSeconds = distance * speed;
-
-        // Convert the arrival time to seconds
-        const arrivalTimeInSeconds =
-          this.arrivalHours * 3600 +
-          this.arrivalMinutes * 60 +
-          this.arrivalSeconds;
 
         // Calculate departure time in seconds
         const departureTimeInSeconds = arrivalTimeInSeconds - travelTimeInSeconds;
@@ -152,14 +149,12 @@ export default {
 
         // Format and add the result to the list
         const formattedDepartureTime = `${departureHours}:${departureMinutes}:${departureSeconds}`;
-        villageResult.results.push({
+        this.attackResults.push({
+          source: { x: this.x1, y: this.y1 },
           target,
           time: formattedDepartureTime,
         });
       }
-
-      // Push the result for the current village to the array
-      this.villageResults.push(villageResult);
     },
     timeInSeconds(formattedTime) {
       const [hours, minutes, seconds] = formattedTime.split(':');
